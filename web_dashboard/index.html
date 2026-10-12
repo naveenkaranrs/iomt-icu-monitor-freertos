@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoMT ICU Real-Time Command Center | Patient Monitoring System</title>
+  
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- External Libraries: Chart.js & jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & CSS VARIABLES
+       ========================================================================== */
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --bg-card-hover: rgba(26, 38, 66, 0.85);
+      --bg-glass: rgba(18, 28, 51, 0.6);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.3);
+      
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-violet: #8b5cf6;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-main: 'Plus Jakarta Sans', sans-serif;
+      --font-display: 'Orbitron', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --status-stable: #10b981;
+      --status-warning: #f59e0b;
+      --status-critical: #f43f5e;
+
+      --shadow-cyan: 0 0 20px rgba(56, 189, 248, 0.25);
+      --shadow-rose: 0 0 25px rgba(244, 63, 94, 0.35);
+      --shadow-amber: 0 0 20px rgba(245, 158, 11, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 60%);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    /* Utility Glassmorphism Class */
+    .glass-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    /* ==========================================================================
+       HEADER & NAVIGATION BAR
+       ========================================================================== */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 10, 18, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.25rem;
+      box-shadow: var(--shadow-cyan);
+    }
+
+    .brand-text h1 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #ffffff, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-glass);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 1.1rem;
+      border-radius: 8px;
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.25s ease;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(139, 92, 246, 0.2));
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .audio-toggle-btn {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .audio-toggle-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .audio-toggle-btn.active {
+      color: var(--accent-rose);
+      border-color: var(--accent-rose);
+      box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
+    }
+
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.4rem 0.85rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-glass);
+      border-radius: 30px;
+      cursor: pointer;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .user-info {
+      text-align: left;
+    }
+
+    .user-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .user-role {
+      font-size: 0.68rem;
+      color: var(--accent-cyan);
+    }
+
+    /* ==========================================================================
+       ENTRANCE / ROLE SELECTION MODAL & PAGE
+       ========================================================================== */
+    .view-container {
+      display: none;
+      flex: 1;
+      padding: 1.5rem 1.75rem;
+      animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .view-container.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ENTRANCE SCREEN */
+    #entrance-view {
+      max-width: 1100px;
+      margin: 2rem auto;
+      text-align: center;
+    }
+
+    .entrance-hero {
+      margin-bottom: 2.5rem;
+    }
+
+    .entrance-hero h2 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      margin-bottom: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    .entrance-hero p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .role-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.75rem;
+      margin-top: 1rem;
+    }
+
+    .role-card {
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .role-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: transparent;
+      transition: background 0.3s;
+    }
+
+    .role-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), var(--shadow-cyan);
+    }
+
+    .role-card.admin:hover::before { background: var(--accent-rose); }
+    .role-card.doctor:hover::before { background: var(--accent-cyan); }
+    .role-card.patient:hover::before { background: var(--accent-emerald); }
+
+    .role-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 20px;
+      margin: 0 auto 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .role-card.admin .role-icon {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--accent-rose);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .role-card.doctor .role-icon {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .role-card.patient .role-icon {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .role-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .role-card p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .role-card.admin .role-badge { background: rgba(244, 63, 94, 0.1); color: var(--accent-rose); }
+    .role-card.doctor .role-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent-cyan); }
+    .role-card.patient .role-badge { background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald); }
+
+    /* AUTH MODAL POPUP */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .auth-modal {
+      width: 100%;
+      max-width: 440px;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal-close-btn:hover { color: #fff; }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .auth-header h3 {
+      font-size: 1.4rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .auth-header p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .input-group {
+      margin-bottom: 1.2rem;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .input-control {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    .input-control:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.85rem;
+      background: linear-gradient(135deg, var(--accent-cyan), #0284c7);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-main);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: var(--shadow-cyan);
+      transition: all 0.2s;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    /* ==========================================================================
+       COMMAND CENTER DASHBOARD (10-BED GRID)
+       ========================================================================== */
+    .dashboard-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.25rem;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .filter-chip {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-chip.active {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    .filter-chip.critical.active { background: var(--accent-rose); color: #fff; border-color: var(--accent-rose); }
+    .filter-chip.warning.active { background: var(--accent-amber); color: #000; border-color: var(--accent-amber); }
+    .filter-chip.stable.active { background: var(--accent-emerald); color: #000; border-color: var(--accent-emerald); }
+
+    .search-box {
+      position: relative;
+      min-width: 240px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 0.85rem 0.5rem 2.2rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .alert-ticker-bar {
+      width: 100%;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: #fecdd3;
+    }
+
+    .ticker-icon {
+      color: var(--accent-rose);
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.15); }
+    }
+
+    .beds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* ICU BED CARD DESIGN */
+    .bed-card {
+      padding: 1.25rem;
+      border-radius: 14px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid var(--border-glass);
+    }
+
+    .bed-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+
+    .bed-card.status-stable {
+      border-left: 4px solid var(--status-stable);
+    }
+    .bed-card.status-warning {
+      border-left: 4px solid var(--status-warning);
+      box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.05);
+    }
+    .bed-card.status-critical {
+      border-left: 4px solid var(--status-critical);
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.25), inset 0 0 15px rgba(244, 63, 94, 0.1);
+      animation: alertPulse 2s infinite alternate;
+    }
+
+    @keyframes alertPulse {
+      from { border-color: rgba(244, 63, 94, 0.4); }
+      to { border-color: rgba(244, 63, 94, 0.9); }
+    }
+
+    .bed-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.85rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .bed-id-tag {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    .patient-mini-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .patient-meta {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .news2-badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .news2-badge.stable { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+    .news2-badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+    .news2-badge.critical { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); }
+
+    /* VITALS METRICS MINI GRID */
+    .vitals-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.65rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .vital-tile {
+      background: rgba(10, 16, 30, 0.6);
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .vital-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .vital-value {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .vital-tile.hr .vital-value { color: var(--accent-rose); }
+    .vital-tile.spo2 .vital-value { color: var(--accent-cyan); }
+    .vital-tile.temp .vital-value { color: var(--accent-amber); }
+    .vital-tile.bp .vital-value { color: var(--accent-violet); }
+
+    .unit {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    .bed-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .status-dot.stable { background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald); }
+    .status-dot.warning { background: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber); }
+    .status-dot.critical { background: var(--accent-rose); box-shadow: 0 0 8px var(--accent-rose); }
+
+    /* ==========================================================================
+       PATIENT DETAIL MONITORING VIEW (ECG CANVAS & DETAILED METRICS)
+       ========================================================================== */
+    .detail-container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 992px) {
+      .detail-container { grid-template-columns: 1fr; }
+    }
+
+    .detail-header {
+      grid-column: 1 / -1;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-glass);
+      color: var(--text-main);
+      padding: 0.4rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .back-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .patient-banner-info {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .patient-name-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .patient-id-code {
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      font-size: 0.85rem;
+    }
+
+    /* ECG CANVAS MONITOR PANEL */
+    .ecg-monitor-card {
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .ecg-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .lead-tag {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 260px;
+      background: #040810;
+      border-radius: 10px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      overflow: hidden;
+    }
+
+    #ecgCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .ecg-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.85rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .ecg-ctrl-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .ecg-ctrl-btn.active {
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+
+    /* CLINICAL REMARKS & REPORT PANEL */
+    .remarks-card {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .remarks-card h3 {
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .remarks-textarea {
+      width: 100%;
+      height: 120px;
+      background: rgba(10, 16, 30, 0.8);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 0.75rem;
+      color: var(--text-main);
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      resize: none;
+      outline: none;
+    }
+    .remarks-textarea:focus { border-color: var(--accent-cyan); }
+
+    .btn-pdf-export {
+      width: 100%;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, var(--accent-emerald), #059669);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+    }
+    .btn-pdf-export:hover { opacity: 0.95; transform: translateY(-1px); }
+
+    /* ==========================================================================
+       ANALYTICS SECTION (CHART.JS HISTORICAL TRENDS)
+       ========================================================================== */
+    .analytics-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.25rem;
+    }
+
+    .bed-select-dropdown {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-glass);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .bed-select-dropdown option {
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+
+    .chart-card {
+      padding: 1.25rem;
+    }
+
+    .chart-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER NAVIGATION -->
+  <header>
+    <div class="brand-logo">
+      <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+      <div class="brand-text">
+        <h1>IoMT ICU COMMAND</h1>
+        <p>Real-Time Patient Risk Analytics System</p>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-btn active" onclick="switchTab('entrance-view')">
+        <i class="fa-solid fa-right-to-bracket"></i> Entrance
+      </button>
+      <button class="nav-btn" onclick="switchTab('command-view')">
+        <i class="fa-solid fa-border-all"></i> ICU 10-Bed Grid
+      </button>
+      <button class="nav-btn" onclick="switchTab('analytics-view')">
+        <i class="fa-solid fa-chart-line"></i> Analytics & Trends
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <button class="audio-toggle-btn" id="audioToggleBtn" onclick="toggleAudioAlarm()">
+        <i class="fa-solid fa-volume-xmark" id="audioIcon"></i> Mute Alarm
+      </button>
+
+      <div class="user-profile-badge" onclick="openAuthModal('Doctor')">
+        <div class="user-avatar" id="navAvatar">DR</div>
+        <div class="user-info">
+          <div class="user-name" id="navUserName">Dr. Sarah Jenkins</div>
+          <div class="user-role" id="navUserRole">Lead ICU Specialist</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       VIEW 1: ENTRANCE & ROLE SELECTION SCREEN
+       ========================================================================== -->
+  <main id="entrance-view" class="view-container active">
+    <div class="entrance-hero">
+      <h2>Select Access Portal Role</h2>
+      <p>Welcome to the Next-Gen Internet of Medical Things (IoMT) ICU Central Monitoring Command Center. Choose your clearance level to initialize session.</p>
+    </div>
+
+    <div class="role-cards-grid">
+      <!-- Admin / Lead Doctor Card -->
+      <div class="role-card glass-panel admin" onclick="openAuthModal('Admin')">
+        <div class="role-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <h3>Admin / Lead Doctor</h3>
+        <p>Full system override, bed allocation management, alarm threshold customization, and clinical report signing.</p>
+        <span class="role-badge">Level 1 Clearance</span>
+      </div>
+
+      <!-- Attending Specialist / Nurse Card -->
+      <div class="role-card glass-panel doctor" onclick="openAuthModal('Doctor')">
+        <div class="role-icon"><i class="fa-solid fa-user-doctor"></i></div>
+        <h3>Attending Doctor / Nurse</h3>
+        <p>Real-time telemetry monitoring, dynamic PQRST ECG waveform view, clinical remark entry, and PDF exports.</p>
+        <span class="role-badge">Level 2 Clearance</span>
+      </div>
+
+      <!-- Visitor / Family Card -->
+      <div class="role-card glass-panel patient" onclick="openAuthModal('Patient')">
+        <div class="role-icon"><i class="fa-solid fa-hospital-user"></i></div>
+        <h3>Patient / Family Portal</h3>
+        <p>Read-only vital status summary for designated patient beds with real-time stability score indicators.</p>
+        <span class="role-badge">Level 3 Visitor</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- AUTHENTICATION MODAL POPUP -->
+  <div class="modal-overlay" id="authModal">
+    <div class="auth-modal glass-panel">
+      <button class="modal-close-btn" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
+      
+      <div class="auth-header">
+        <h3 id="modalRoleTitle">Doctor Access Portal</h3>
+        <p>Enter your medical credentials or click Quick Launch</p>
+      </div>
+
+      <form onsubmit="handleAuthLogin(event)">
+        <div class="input-group">
+          <label>Medical License / User ID</label>
+          <input type="text" id="modalUsername" class="input-control" value="DR-8849-ICU" required>
+        </div>
+        <div class="input-group">
+          <label>Security Passcode</label>
+          <input type="password" id="modalPassword" class="input-control" value="••••••••" required>
+        </div>
+        <button type="submit" class="btn-submit">Initialize Command Center <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 2: 10-BED ICU COMMAND CENTER GRID
+       ========================================================================== -->
+  <main id="command-view" class="view-container">
+    <div class="dashboard-toolbar glass-panel">
+      <div class="filter-group">
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin-right: 0.5rem;">Filter Beds:</span>
+        <button class="filter-chip active" onclick="filterBeds('ALL')">All Beds (10)</button>
+        <button class="filter-chip critical" onclick="filterBeds('CRITICAL')">Critical (<span id="criticalCount">0</span>)</button>
+        <button class="filter-chip warning" onclick="filterBeds('WARNING')">Warning (<span id="warningCount">0</span>)</button>
+        <button class="filter-chip stable" onclick="filterBeds('STABLE')">Stable (<span id="stableCount">0</span>)</button>
+      </div>
+
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="bedSearchInput" placeholder="Search Bed ID or Patient Name..." oninput="handleBedSearch()">
+      </div>
+    </div>
+
+    <!-- Active Alarm Ticker -->
+    <div class="alert-ticker-bar" id="alertTickerBar">
+      <i class="fa-solid fa-triangle-exclamation ticker-icon"></i>
+      <span id="alertTickerText">Command Center System Active: All 10 ICU Telemetry Nodes connected via IoMT ESP32 Gateway.</span>
+    </div>
+
+    <!-- 10-Bed Grid Container -->
+    <div class="beds-grid" id="bedsGridContainer">
+      <!-- Injected Dynamically by JavaScript -->
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       VIEW 3: PATIENT DETAIL MONITORING VIEW (ECG CANVAS & CLINICAL NOTES)
+       ========================================================================== -->
+  <main id="patient-detail-view" class="view-container">
+    <div class="detail-container">
+      
+      <!-- Detail View Banner Header -->
+      <div class="detail-header glass-panel">
+        <button class="back-btn" onclick="switchTab('command-view')">
+          <i class="fa-solid fa-chevron-left"></i> Back to Command Grid
+        </button>
+
+        <div class="patient-banner-info">
+          <div>
+            <div class="patient-name-title" id="detailPatientName">Robert Chen</div>
+            <div class="patient-id-code"><span id="detailBedId">ICU-03</span> | ID: <span id="detailPatientId">P-1092</span> | Age: 58 | Sex: M</div>
+          </div>
+          <div class="news2-badge critical" id="detailNews2Badge" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+            NEWS2 Score: <span id="detailNews2Score">6</span> (HIGH RISK)
+          </div>
+        </div>
+      </div>
+
+      <!-- Left Column: ECG Canvas & Live Digital Telemetry Tiles -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Live ECG Canvas Monitor -->
+        <div class="ecg-monitor-card glass-panel">
+          <div class="ecg-card-header">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="lead-tag">LEAD II</span>
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--accent-cyan);">
+                <i class="fa-solid fa-wave-square"></i> Live P-Q-R-S-T Sweep Engine
+              </span>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-emerald);">
+              <i class="fa-solid fa-circle" style="font-size: 0.6rem; animation: pulse 1s infinite;"></i> 500 Hz Sampling
+            </div>
+          </div>
+
+          <!-- HTML5 CANVAS FOR ECG -->
+          <div class="canvas-wrapper">
+            <canvas id="ecgCanvas"></canvas>
+          </div>
+
+          <div class="ecg-controls">
+            <span>Sweep Speed:</span>
+            <button class="ecg-ctrl-btn active" onclick="setEcgSpeed(1)">25 mm/s</button>
+            <button class="ecg-ctrl-btn" onclick="setEcgSpeed(2)">50 mm/s</button>
+            <span style="margin-left: auto;">Gain: 10mm/mV</span>
+          </div>
+        </div>
+
+        <!-- Digital Vital Readouts Grid -->
+        <div class="vitals-mini-grid" style="grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+          <div class="vital-tile hr glass-panel" style="padding: 1rem;">
+            <div class="vital-label"><i class="fa-solid fa-heart-pulse"></i> HEART RATE</div>
+            <div class="vital-value" id="detailHrVal">112 <span class="unit">bpm</span></div>
+          </div>
+          <div class="vital-tile spo2 glass-panel" style="padding: 1rem;">
+            <div class="vital-label"><i class="fa-solid fa-lungs"></i> SpO2</div>
+            <div class="vital-value" id="detailSpo2Val">91 <span class="unit">%</span></div>
+          </div>
+          <div class="vital-tile temp glass-panel" style="padding: 1rem;">
+            <div class="vital-label"><i class="fa-solid fa-temperature-three-quarters"></i> TEMP</div>
+            <div class="vital-value" id="detailTempVal">38.7 <span class="unit">°C</span></div>
+          </div>
+          <div class="vital-tile bp glass-panel" style="padding: 1rem;">
+            <div class="vital-label"><i class="fa-solid fa-stethoscope"></i> BLOOD PRESSURE</div>
+            <div class="vital-value" id="detailBpVal">142/90 <span class="unit">mmHg</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Clinical Remarks & PDF Generator -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Clinical Remarks Card -->
+        <div class="remarks-card glass-panel" style="flex: 1;">
+          <h3><i class="fa-solid fa-file-medical" style="color: var(--accent-cyan);"></i> Clinical Observations & Diagnosis</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Attending physician notes will be compiled into the official medical report PDF.</p>
+          
+          <textarea id="clinicalNotesInput" class="remarks-textarea" placeholder="Enter clinical observations, medication administered, or diagnostic notes here..."></textarea>
+          
+          <button class="btn-submit" onclick="saveClinicalNotes()" style="padding: 0.6rem; font-size: 0.85rem;">
+            <i class="fa-solid fa-floppy-disk"></i> Save Observations Log
+          </button>
+        </div>
+
+        <!-- Download PDF Report Card -->
+        <div class="glass-panel" style="padding: 1.25rem;">
+          <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-file-pdf" style="color: var(--accent-emerald);"></i> Medical PDF Export</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Generate an authenticated clinical report summary for this patient bed session.</p>
+          
+          <button class="btn-pdf-export" onclick="exportPatientPDF()">
+            <i class="fa-solid fa-download"></i> Download PDF Medical Report
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       VIEW 4: ANALYTICS & HISTORICAL TRENDS
+       ========================================================================== -->
+  <main id="analytics-view" class="view-container">
+    <div class="analytics-controls glass-panel">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Select ICU Bed:</span>
+        <select id="analyticsBedSelect" class="bed-select-dropdown" onchange="updateAnalyticsCharts()">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--accent-cyan); font-family: var(--font-mono);">
+        <i class="fa-solid fa-clock-rotate-left"></i> Historical Buffer: 60 Rolling Telemetry Frames
+      </div>
+    </div>
+
+    <!-- Chart.js Canvas Grid -->
+    <div class="charts-grid">
+      <!-- HR Chart Card -->
+      <div class="chart-card glass-panel">
+        <h3><i class="fa-solid fa-heart-pulse" style="color: var(--accent-rose);"></i> Heart Rate (BPM) Trend Line</h3>
+        <div class="chart-container">
+          <canvas id="hrTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- SpO2 Chart Card -->
+      <div class="chart-card glass-panel">
+        <h3><i class="fa-solid fa-lungs" style="color: var(--accent-cyan);"></i> SpO2 (%) Oxygen Saturation Trend</h3>
+        <div class="chart-container">
+          <canvas id="spo2TrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       APPLICATION LOGIC & TELEMETRY ENGINE
+       ========================================================================== -->
+  <script>
+    /* --------------------------------------------------------------------------
+       1. STATE MANAGEMENT & INITIAL DATASET (10 ICU BEDS)
+       -------------------------------------------------------------------------- */
+    const initialBeds = [
+      { id: 'ICU-01', patientId: 'P-1001', name: 'Eleanor Vance', age: 64, gender: 'F', hr: 74, spo2: 98, temp: 36.6, rr: 16, sysBp: 120, diaBp: 80, notes: 'Patient resting comfortably post-surgery.' },
+      { id: 'ICU-02', patientId: 'P-1002', name: 'Marcus Brody', age: 52, gender: 'M', hr: 88, spo2: 96, temp: 37.1, rr: 18, sysBp: 128, diaBp: 82, notes: 'Vital parameters within normal range.' },
+      { id: 'ICU-03', patientId: 'P-1003', name: 'Robert Chen', age: 58, gender: 'M', hr: 118, spo2: 91, temp: 38.8, rr: 24, sysBp: 142, diaBp: 90, notes: 'Elevated temperature and tachypnea observed.' },
+      { id: 'ICU-04', patientId: 'P-1004', name: 'Sophia Martinez', age: 71, gender: 'F', hr: 62, spo2: 99, temp: 36.4, rr: 14, sysBp: 115, diaBp: 75, notes: 'Stable recovery.' },
+      { id: 'ICU-05', patientId: 'P-1005', name: 'Arthur Pendelton', age: 79, gender: 'M', hr: 135, spo2: 89, temp: 39.2, rr: 26, sysBp: 88, diaBp: 55, notes: 'CRITICAL ALERT: Septic shock protocol initiated.' },
+      { id: 'ICU-06', patientId: 'P-1006', name: 'Hannah Abbott', age: 44, gender: 'F', hr: 81, spo2: 97, temp: 36.8, rr: 15, sysBp: 122, diaBp: 78, notes: 'Post-op observation.' },
+      { id: 'ICU-07', patientId: 'P-1007', name: 'David Gandy', age: 61, gender: 'M', hr: 95, spo2: 94, temp: 37.8, rr: 20, sysBp: 135, diaBp: 85, notes: 'Mild fever spikes monitored.' },
+      { id: 'ICU-08', patientId: 'P-1008', name: 'Clara Oswald', age: 39, gender: 'F', hr: 68, spo2: 99, temp: 36.5, rr: 12, sysBp: 118, diaBp: 76, notes: 'Scheduled for transfer out of ICU.' },
+      { id: 'ICU-09', patientId: 'P-1009', name: 'Viktor Krum', age: 47, gender: 'M', hr: 104, spo2: 93, temp: 38.1, rr: 22, sysBp: 138, diaBp: 88, notes: 'Mild respiratory distress.' },
+      { id: 'ICU-10', patientId: 'P-1010', name: 'Grace Hopper', age: 83, gender: 'F', hr: 56, spo2: 95, temp: 36.2, rr: 14, sysBp: 108, diaBp: 68, notes: 'Sinus bradycardia observed.' }
+    ];
+
+    let bedsData = [];
+    let activeFilter = 'ALL';
+    let currentDetailBedId = 'ICU-03';
+    let audioMuted = true;
+    let audioCtx = null;
+    let simulationTimer = null;
+
+    // Historical trends memory buffers (for 10 beds)
+    const historyBuffer = {};
+
+    /* --------------------------------------------------------------------------
+       2. NEWS2 RISK SCORE CALCULATOR ALGORITHM
+       -------------------------------------------------------------------------- */
+    function calculateNEWS2(vitals) {
+      let score = 0;
+
+      // 1. Respiration Rate (rr)
+      if (vitals.rr <= 8) score += 3;
+      else if (vitals.rr >= 9 && vitals.rr <= 11) score += 1;
+      else if (vitals.rr >= 12 && vitals.rr <= 20) score += 0;
+      else if (vitals.rr >= 21 && vitals.rr <= 24) score += 2;
+      else if (vitals.rr >= 25) score += 3;
+
+      // 2. SpO2 (%)
+      if (vitals.spo2 <= 91) score += 3;
+      else if (vitals.spo2 >= 92 && vitals.spo2 <= 93) score += 2;
+      else if (vitals.spo2 >= 94 && vitals.spo2 <= 95) score += 1;
+      else if (vitals.spo2 >= 96) score += 0;
+
+      // 3. Systolic BP (sysBp)
+      if (vitals.sysBp <= 90) score += 3;
+      else if (vitals.sysBp >= 91 && vitals.sysBp <= 100) score += 2;
+      else if (vitals.sysBp >= 101 && vitals.sysBp <= 110) score += 1;
+      else if (vitals.sysBp >= 111 && vitals.sysBp <= 219) score += 0;
+      else if (vitals.sysBp >= 220) score += 3;
+
+      // 4. Heart Rate (hr)
+      if (vitals.hr <= 40) score += 3;
+      else if (vitals.hr >= 41 && vitals.hr <= 50) score += 1;
+      else if (vitals.hr >= 51 && vitals.hr <= 90) score += 0;
+      else if (vitals.hr >= 91 && vitals.hr <= 110) score += 1;
+      else if (vitals.hr >= 111 && vitals.hr <= 130) score += 2;
+      else if (vitals.hr >= 131) score += 3;
+
+      // 5. Body Temperature (temp)
+      if (vitals.temp <= 35.0) score += 3;
+      else if (vitals.temp >= 35.1 && vitals.temp <= 36.0) score += 1;
+      else if (vitals.temp >= 36.1 && vitals.temp <= 38.0) score += 0;
+      else if (vitals.temp >= 38.1 && vitals.temp <= 39.0) score += 1;
+      else if (vitals.temp >= 39.1) score += 2;
+
+      // Determine Risk Category
+      let category = 'STABLE';
+      if (score >= 5) category = 'CRITICAL';
+      else if (score >= 3) category = 'WARNING';
+
+      return { score, category };
+    }
+
+    /* --------------------------------------------------------------------------
+       3. INITIALIZATION & DATA SIMULATION ENGINE
+       -------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Initialize beds data
+      bedsData = initialBeds.map(b => {
+        const news = calculateNEWS2(b);
+        return { ...b, newsScore: news.score, status: news.category };
+      });
+
+      // Prepare historical buffers
+      bedsData.forEach(b => {
+        historyBuffer[b.id] = {
+          labels: [],
+          hr: [],
+          spo2: []
+        };
+        // Seed 15 initial history frames
+        const now = new Date();
+        for (let i = 15; i >= 0; i--) {
+          const t = new Date(now.getTime() - i * 5000);
+          const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          historyBuffer[b.id].labels.push(timeStr);
+          historyBuffer[b.id].hr.push(Math.max(50, Math.min(140, b.hr + Math.floor((Math.random() - 0.5) * 6))));
+          historyBuffer[b.id].spo2.push(Math.max(88, Math.min(100, b.spo2 + Math.floor((Math.random() - 0.5) * 2))));
+        }
+      });
+
+      // Populate Analytics Dropdown & Render Grid
+      populateAnalyticsDropdown();
+      renderBedsGrid();
+      initEcgCanvas();
+      initCharts();
+
+      // Start 2-second IoMT telemetry fluctuation loop
+      simulationTimer = setInterval(simulateIoMTTelemetry, 2000);
+    });
+
+    function simulateIoMTTelemetry() {
+      let criticalCount = 0;
+
+      bedsData.forEach(b => {
+        // Minor realistic random drift
+        const hrDelta = Math.floor((Math.random() - 0.48) * 3);
+        const spo2Delta = Math.random() > 0.8 ? (Math.random() > 0.5 ? 1 : -1) : 0;
+        const tempDelta = parseFloat(((Math.random() - 0.49) * 0.1).toFixed(1));
+
+        b.hr = Math.max(45, Math.min(160, b.hr + hrDelta));
+        b.spo2 = Math.max(85, Math.min(100, b.spo2 + spo2Delta));
+        b.temp = parseFloat(Math.max(34.5, Math.min(40.5, b.temp + tempDelta)).toFixed(1));
+
+        const news = calculateNEWS2(b);
+        b.newsScore = news.score;
+        b.status = news.category;
+
+        if (b.status === 'CRITICAL') criticalCount++;
+
+        // Push to history buffer
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        historyBuffer[b.id].labels.push(timeStr);
+        historyBuffer[b.id].hr.push(b.hr);
+        historyBuffer[b.id].spo2.push(b.spo2);
+
+        if (historyBuffer[b.id].labels.length > 30) {
+          historyBuffer[b.id].labels.shift();
+          historyBuffer[b.id].hr.shift();
+          historyBuffer[b.id].spo2.shift();
+        }
+      });
+
+      // Audio alarm beep if critical beds exist & not muted
+      if (criticalCount > 0 && !audioMuted) {
+        playBeepSound();
+      }
+
+      // Refresh current UI view
+      renderBedsGrid();
+      updateDetailViewValues();
+      updateAnalyticsCharts();
+    }
+
+    /* --------------------------------------------------------------------------
+       4. COMMAND CENTER UI RENDERER & FILTERS
+       -------------------------------------------------------------------------- */
+    function renderBedsGrid() {
+      const container = document.getElementById('bedsGridContainer');
+      const searchVal = document.getElementById('bedSearchInput')?.value.toLowerCase() || '';
+
+      let cCount = 0, wCount = 0, sCount = 0;
+      bedsData.forEach(b => {
+        if (b.status === 'CRITICAL') cCount++;
+        else if (b.status === 'WARNING') wCount++;
+        else sCount++;
+      });
+
+      document.getElementById('criticalCount').innerText = cCount;
+      document.getElementById('warningCount').innerText = wCount;
+      document.getElementById('stableCount').innerText = sCount;
+
+      const filtered = bedsData.filter(b => {
+        const matchesFilter = (activeFilter === 'ALL') || (b.status === activeFilter);
+        const matchesSearch = b.id.toLowerCase().includes(searchVal) || b.name.toLowerCase().includes(searchVal);
+        return matchesFilter && matchesSearch;
+      });
+
+      container.innerHTML = filtered.map(b => `
+        <div class="bed-card glass-panel status-${b.status.toLowerCase()}" onclick="openPatientDetail('${b.id}')">
+          <div class="bed-card-header">
+            <div>
+              <div class="bed-id-tag">${b.id}</div>
+              <div class="patient-mini-name">${b.name}</div>
+              <div class="patient-meta">${b.gender}, ${b.age} yrs | ${b.patientId}</div>
+            </div>
+            <div class="news2-badge ${b.status.toLowerCase()}">
+              NEWS2: ${b.newsScore}
+            </div>
+          </div>
+
+          <div class="vitals-mini-grid">
+            <div class="vital-tile hr">
+              <div class="vital-label"><i class="fa-solid fa-heart-pulse"></i> HR</div>
+              <div class="vital-value">${b.hr} <span class="unit">bpm</span></div>
+            </div>
+            <div class="vital-tile spo2">
+              <div class="vital-label"><i class="fa-solid fa-lungs"></i> SpO2</div>
+              <div class="vital-value">${b.spo2} <span class="unit">%</span></div>
+            </div>
+            <div class="vital-tile temp">
+              <div class="vital-label"><i class="fa-solid fa-temperature-three-quarters"></i> TEMP</div>
+              <div class="vital-value">${b.temp} <span class="unit">°C</span></div>
+            </div>
+            <div class="vital-tile bp">
+              <div class="vital-label"><i class="fa-solid fa-stethoscope"></i> BP</div>
+              <div class="vital-value">${b.sysBp}/${b.diaBp}</div>
+            </div>
+          </div>
+
+          <div class="bed-card-footer">
+            <div class="status-indicator">
+              <div class="status-dot ${b.status.toLowerCase()}"></div>
+              <span>${b.status}</span>
+            </div>
+            <span style="color: var(--accent-cyan); font-weight: 600;">Monitor Live <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterBeds(type) {
+      activeFilter = type;
+      document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderBedsGrid();
+    }
+
+    function handleBedSearch() {
+      renderBedsGrid();
+    }
+
+    /* --------------------------------------------------------------------------
+       5. NAVIGATION & TAB SWITCHING
+       -------------------------------------------------------------------------- */
+    function switchTab(viewId) {
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      
+      if (viewId === 'entrance-view') document.querySelectorAll('.nav-btn')[0].classList.add('active');
+      else if (viewId === 'command-view') document.querySelectorAll('.nav-btn')[1].classList.add('active');
+      else if (viewId === 'analytics-view') document.querySelectorAll('.nav-btn')[2].classList.add('active');
+    }
+
+    /* --------------------------------------------------------------------------
+       6. PATIENT DETAIL VIEW & ECG CANVAS ENGINE
+       -------------------------------------------------------------------------- */
+    function openPatientDetail(bedId) {
+      currentDetailBedId = bedId;
+      const b = bedsData.find(x => x.id === bedId);
+      if (!b) return;
+
+      document.getElementById('detailPatientName').innerText = b.name;
+      document.getElementById('detailBedId').innerText = b.id;
+      document.getElementById('detailPatientId').innerText = b.patientId;
+      document.getElementById('clinicalNotesInput').value = b.notes || '';
+
+      updateDetailViewValues();
+      switchTab('patient-detail-view');
+    }
+
+    function updateDetailViewValues() {
+      const b = bedsData.find(x => x.id === currentDetailBedId);
+      if (!b) return;
+
+      document.getElementById('detailHrVal').innerHTML = `${b.hr} <span class="unit">bpm</span>`;
+      document.getElementById('detailSpo2Val').innerHTML = `${b.spo2} <span class="unit">%</span>`;
+      document.getElementById('detailTempVal').innerHTML = `${b.temp} <span class="unit">°C</span>`;
+      document.getElementById('detailBpVal').innerHTML = `${b.sysBp}/${b.diaBp} <span class="unit">mmHg</span>`;
+
+      const badge = document.getElementById('detailNews2Badge');
+      badge.className = `news2-badge ${b.status.toLowerCase()}`;
+      badge.innerHTML = `NEWS2 Score: ${b.newsScore} (${b.status})`;
+    }
+
+    function saveClinicalNotes() {
+      const b = bedsData.find(x => x.id === currentDetailBedId);
+      if (b) {
+        b.notes = document.getElementById('clinicalNotesInput').value;
+        alert(`Clinical observations saved for Patient Bed ${b.id}`);
+      }
+    }
+
+    /* REAL-TIME HTML5 CANVAS ECG P-Q-R-S-T WAVEFORM ANIMATION */
+    let canvas, ctx;
+    let ecgX = 0;
+    let ecgSpeed = 2; // 25mm/s default factor
+
+    function initEcgCanvas() {
+      canvas = document.getElementById('ecgCanvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+
+      // Resize canvas to fit container
+      function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        drawGrid();
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Start 60 FPS Render Loop
+      requestAnimationFrame(renderEcgFrame);
+    }
+
+    function drawGrid() {
+      ctx.fillStyle = '#040810';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.lineWidth = 1;
+
+      // Small Grid (15px)
+      const gridSize = 15;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function generatePQRSTValue(t) {
+      // Synthesize realistic P-Q-R-S-T ECG cycle over period 0..1
+      const cycle = t % 1;
+      let y = 0;
+
+      if (cycle > 0.1 && cycle < 0.18) {
+        // P Wave
+        y = Math.sin((cycle - 0.1) / 0.08 * Math.PI) * 12;
+      } else if (cycle > 0.22 && cycle < 0.25) {
+        // Q Wave
+        y = -8;
+      } else if (cycle >= 0.25 && cycle <= 0.32) {
+        // R Spike (Sharp High Peak)
+        if (cycle < 0.285) y = ((cycle - 0.25) / 0.035) * 85;
+        else y = (1 - (cycle - 0.285) / 0.035) * 85;
+      } else if (cycle > 0.32 && cycle < 0.36) {
+        // S Dip
+        y = -18;
+      } else if (cycle > 0.48 && cycle < 0.65) {
+        // T Wave
+        y = Math.sin((cycle - 0.48) / 0.17 * Math.PI) * 22;
+      }
+
+      return y;
+    }
+
+    let sampleCounter = 0;
+    function renderEcgFrame() {
+      if (!canvas || !ctx) return;
+
+      const currentPatient = bedsData.find(x => x.id === currentDetailBedId) || bedsData[0];
+      const hr = currentPatient ? currentPatient.hr : 75;
+      const cyclePeriod = (60 / hr) * 60; // frames per beat at 60fps
+
+      const midY = canvas.height / 2;
+      const step = ecgSpeed * 2.5;
+
+      // Clear leading sweep line zone
+      ctx.fillStyle = '#040810';
+      ctx.fillRect(ecgX, 0, step + 15, canvas.height);
+
+      // Redraw grid slice
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.lineWidth = 1;
+      const gridSize = 15;
+      for (let gx = Math.floor(ecgX / gridSize) * gridSize; gx <= ecgX + step + 15; gx += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, canvas.height);
+        ctx.stroke();
+      }
+
+      // Calculate Y value
+      sampleCounter += 1 / cyclePeriod;
+      const yVal = generatePQRSTValue(sampleCounter);
+
+      const nextX = ecgX + step;
+      const nextY = midY - yVal;
+
+      // Draw ECG Line
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+
+      ctx.beginPath();
+      ctx.moveTo(ecgX, midY - generatePQRSTValue(sampleCounter - 0.02));
+      ctx.lineTo(nextX, nextY);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0; // reset glow
+
+      ecgX = nextX;
+      if (ecgX >= canvas.width) {
+        ecgX = 0;
+      }
+
+      requestAnimationFrame(renderEcgFrame);
+    }
+
+    function setEcgSpeed(spd) {
+      ecgSpeed = spd;
+      document.querySelectorAll('.ecg-ctrl-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    /* --------------------------------------------------------------------------
+       7. HISTORICAL TRENDS (CHART.JS INTEGRATION)
+       -------------------------------------------------------------------------- */
+    let hrChart, spo2Chart;
+
+    function populateAnalyticsDropdown() {
+      const select = document.getElementById('analyticsBedSelect');
+      select.innerHTML = bedsData.map(b => `<option value="${b.id}">${b.id} - ${b.name}</option>`).join('');
+    }
+
+    function initCharts() {
+      const hrCtx = document.getElementById('hrTrendChart').getContext('2d');
+      const spo2Ctx = document.getElementById('spo2TrendChart').getContext('2d');
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+        },
+        plugins: { legend: { display: false } }
+      };
+
+      hrChart = new Chart(hrCtx, {
+        type: 'line',
+        data: {
+          labels: historyBuffer['ICU-01'].labels,
+          datasets: [{
+            label: 'Heart Rate (bpm)',
+            data: historyBuffer['ICU-01'].hr,
+            borderColor: '#f43f5e',
+            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2
+          }]
+        },
+        options: chartOptions
+      });
+
+      spo2Chart = new Chart(spo2Ctx, {
+        type: 'line',
+        data: {
+          labels: historyBuffer['ICU-01'].labels,
+          datasets: [{
+            label: 'SpO2 (%)',
+            data: historyBuffer['ICU-01'].spo2,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2
+          }]
+        },
+        options: chartOptions
+      });
+    }
+
+    function updateAnalyticsCharts() {
+      if (!hrChart || !spo2Chart) return;
+
+      const selectedId = document.getElementById('analyticsBedSelect')?.value || 'ICU-01';
+      const buf = historyBuffer[selectedId];
+
+      if (buf) {
+        hrChart.data.labels = buf.labels;
+        hrChart.data.datasets[0].data = buf.hr;
+        hrChart.update('none');
+
+        spo2Chart.data.labels = buf.labels;
+        spo2Chart.data.datasets[0].data = buf.spo2;
+        spo2Chart.update('none');
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       8. AUTHENTICATION MODAL & AUDIO ALARM CONTROLLER
+       -------------------------------------------------------------------------- */
+    function openAuthModal(role) {
+      const modal = document.getElementById('authModal');
+      document.getElementById('modalRoleTitle').innerText = `${role} Access Portal`;
+      modal.classList.add('active');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.remove('active');
+    }
+
+    function handleAuthLogin(e) {
+      e.preventDefault();
+      closeAuthModal();
+      switchTab('command-view');
+    }
+
+    function toggleAudioAlarm() {
+      audioMuted = !audioMuted;
+      const btn = document.getElementById('audioToggleBtn');
+
+      if (audioMuted) {
+        btn.classList.remove('active');
+        btn.innerHTML = `<i class="fa-solid fa-volume-xmark"></i> Mute Alarm`;
+      } else {
+        btn.classList.add('active');
+        btn.innerHTML = `<i class="fa-solid fa-volume-high"></i> Alarm Active`;
+        playBeepSound();
+      }
+    }
+
+    function playBeepSound() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch alarm tone
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (err) {
+        console.log('Audio Context error:', err);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       9. PDF MEDICAL REPORT GENERATOR (jsPDF)
+       -------------------------------------------------------------------------- */
+    function exportPatientPDF() {
+      const b = bedsData.find(x => x.id === currentDetailBedId);
+      if (!b) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // PDF Styling Constants
+      const primaryColor = [14, 116, 144]; // Deep Teal
+      const darkColor = [30, 41, 59];
+
+      // Header Banner
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 30, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('ICU CLINICAL PATIENT MONITORING REPORT', 14, 18);
+      doc.setFontSize(9);
+      doc.text('CONFIDENTIAL MEDICAL RECORD | IoMT COMMAND CENTER', 14, 25);
+
+      // Report Metadata Block
+      doc.setTextColor(...darkColor);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PATIENT DEMOGRAPHICS & BED DETAILS', 14, 42);
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, 44, 196, 44);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Patient Name: ${b.name}`, 14, 52);
+      doc.text(`Patient ID: ${b.patientId}`, 14, 58);
+      doc.text(`Bed Assignment: ${b.id}`, 14, 64);
+      doc.text(`Age / Sex: ${b.age} Yrs / ${b.gender}`, 120, 52);
+      doc.text(`Timestamp: ${new Date().toLocaleString()}`, 120, 58);
+      doc.text(`Attending Physician: Dr. Sarah Jenkins`, 120, 64);
+
+      // Vital Telemetry Summary Table
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('REAL-TIME VITAL TELEMETRY SNAPSHOT', 14, 78);
+      doc.line(14, 80, 196, 80);
+
+      // Table Box
+      doc.setFillColor(245, 247, 250);
+      doc.rect(14, 85, 182, 38, 'F');
+      doc.rect(14, 85, 182, 38, 'S');
+
+      doc.setFontSize(10);
+      doc.text(`Heart Rate (BPM): ${b.hr} bpm`, 20, 95);
+      doc.text(`SpO2 Oxygen Saturation: ${b.spo2} %`, 20, 103);
+      doc.text(`Body Temperature: ${b.temp} °C`, 20, 111);
+
+      doc.text(`Respiration Rate: ${b.rr} bpm`, 110, 95);
+      doc.text(`Blood Pressure: ${b.sysBp}/${b.diaBp} mmHg`, 110, 103);
+
+      // NEWS2 Risk Score Calculation Block
+      doc.setFont('helvetica', 'bold');
+      doc.text('NATIONAL EARLY WARNING SCORE (NEWS2) ASSESSMENT', 14, 134);
+      doc.line(14, 136, 196, 136);
+
+      let statusColor = [16, 185, 129];
+      if (b.status === 'CRITICAL') statusColor = [244, 63, 94];
+      else if (b.status === 'WARNING') statusColor = [245, 158, 11];
+
+      doc.setFillColor(...statusColor);
+      doc.rect(14, 142, 182, 14, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.text(`NEWS2 AGGREGATE SCORE: ${b.newsScore}  |  CLINICAL RISK STATUS: ${b.status}`, 20, 151);
+
+      // Clinical Observations
+      doc.setTextColor(...darkColor);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CLINICAL OBSERVATIONS & NOTES', 14, 170);
+      doc.line(14, 172, 196, 172);
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9.5);
+      const notesText = b.notes || 'No specific clinical observations recorded during this session.';
+      const splitNotes = doc.splitTextToSize(notesText, 178);
+      doc.text(splitNotes, 14, 180);
+
+      // Signature Block
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Authorized Electronic Signature: _______________________', 14, 250);
+      doc.text('Dr. Sarah Jenkins (Lead ICU Consultant)', 14, 256);
+
+      // Save PDF File
+      doc.save(`Medical_Report_${b.id}_${b.patientId}.pdf`);
+    }
+  </script>
+</body>
+</html>
